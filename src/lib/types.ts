@@ -15,10 +15,16 @@ export interface Profile {
   user_id: string;
   username: string;
   display_name: string;
-  is_admin: boolean;
   receives_notifications: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface UserRole {
+  id: string;
+  user_id: string;
+  role: 'admin' | 'user';
+  created_at: string;
 }
 
 export interface RoomAccess {

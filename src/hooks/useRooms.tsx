@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Room, RoomStatus, Profile, RoomAccess } from '@/lib/types';
+import { Room, RoomStatus, RoomAccess } from '@/lib/types';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
 
 export function useRooms() {
-  const { user, profile } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [accessibleRoomIds, setAccessibleRoomIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -144,7 +144,7 @@ export function useRooms() {
   };
 
   const canAccessRoom = (roomId: string) => {
-    if (profile?.is_admin) return true;
+    if (isAdmin) return true;
     return accessibleRoomIds.includes(roomId);
   };
 

@@ -8,6 +8,7 @@ interface AuthContextType {
   profile: Profile | null;
   session: Session | null;
   loading: boolean;
+  isAdmin: boolean;
   signIn: (username: string, password: string) => Promise<{ error: string | null }>;
   signUp: (username: string, password: string, displayName: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -20,6 +21,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  const checkAdminRole = async (userId: string) => {
+    const { data } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .eq('role', 'admin')
+      .maybeSingle();
+    
+    return !!data;
+  };
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -34,27 +47,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .maybeSingle();
         
         setProfile(profileData as Profile | null);
+        
+        const adminStatus = await checkAdminRole(session.user.id);
+        setIsAdmin(adminStatus);
       } else {
         setProfile(null);
+        setIsAdmin(false);
       }
       
       setLoading(false);
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        supabase
+        const { data } = await supabase
           .from('profiles')
           .select('*')
           .eq('user_id', session.user.id)
-          .maybeSingle()
-          .then(({ data }) => {
-            setProfile(data as Profile | null);
-            setLoading(false);
-          });
+          .maybeSingle();
+        
+        setProfile(data as Profile | null);
+        
+        const adminStatus = await checkAdminRole(session.user.id);
+        setIsAdmin(adminStatus);
+        setLoading(false);
       } else {
         setLoading(false);
       }
@@ -113,7 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (data.user) {
       // Check if this is the Admin user
-      const isAdmin = username.toLowerCase() === 'admin';
+      const isAdminUser = username.toLowerCase() === 'admin';
       
       const { error: profileError } = await supabase
         .from('profiles')
@@ -121,12 +140,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           user_id: data.user.id,
           username: username.toLowerCase(),
           display_name: displayName,
-          is_admin: isAdmin,
-          receives_notifications: isAdmin,
+          receives_notifications: isAdminUser,
         });
 
       if (profileError) {
         return { error: 'Failed to create profile' };
+      }
+
+      // Add admin role if this is the admin user
+      if (isAdminUser) {
+        await supabase
+          .from('user_roles')
+          .insert({
+            user_id: data.user.id,
+            role: 'admin',
+          });
       }
     }
 
@@ -138,10 +166,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setProfile(null);
     setSession(null);
+    setIsAdmin(false);
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, session, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, profile, session, loading, isAdmin, signIn, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   );
