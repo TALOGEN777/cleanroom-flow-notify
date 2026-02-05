@@ -181,12 +181,13 @@ export function useRooms() {
     if (!user) return;
 
     try {
-      const { data: recipients, error } = await supabase
-        .from('profiles')
+      // Get all users with 'operation_team' role
+      const { data: operationTeamRoles, error } = await supabase
+        .from('user_roles')
         .select('user_id')
-        .eq('receives_notifications', true);
+        .eq('role', 'operation_team');
 
-      if (error || !recipients) return;
+      if (error || !operationTeamRoles) return;
 
       const room = roomsRef.current.find(r => r.id === roomId);
       if (!room) return;
@@ -195,16 +196,15 @@ export function useRooms() {
         ? `Room ${room.room_number} is now clear${incubatorNumber ? ` (Incubator: ${incubatorNumber})` : ''}. Ready for cleaning.`
         : `Room ${room.room_number} cleaning complete. Room is ready.`;
 
-      for (const recipient of recipients) {
-        if (recipient.user_id !== user.id) {
-          await supabase.from('notifications').insert({
-            room_id: roomId,
-            sender_id: user.id,
-            recipient_id: recipient.user_id,
-            notification_type: type,
-            message,
-          });
-        }
+      for (const recipient of operationTeamRoles) {
+        // Send notification to all operation_team members (including the sender if they're operation_team)
+        await supabase.from('notifications').insert({
+          room_id: roomId,
+          sender_id: user.id,
+          recipient_id: recipient.user_id,
+          notification_type: type,
+          message,
+        });
       }
     } catch (err) {
       console.error('Error sending notifications:', err);
