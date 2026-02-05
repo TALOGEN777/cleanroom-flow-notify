@@ -14,30 +14,33 @@ import { toast } from 'sonner';
 
 export default function Admin() {
   const navigate = useNavigate();
-  const { profile } = useAuth();
+  const { isAdmin } = useAuth();
   const [users, setUsers] = useState<Profile[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [roomAccess, setRoomAccess] = useState<RoomAccess[]>([]);
+  const [userRoles, setUserRoles] = useState<{ user_id: string; role: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!profile?.is_admin) {
+    if (!isAdmin) {
       navigate('/');
       return;
     }
     fetchData();
-  }, [profile, navigate]);
+  }, [isAdmin, navigate]);
 
   const fetchData = async () => {
-    const [usersRes, roomsRes, accessRes] = await Promise.all([
+    const [usersRes, roomsRes, accessRes, rolesRes] = await Promise.all([
       supabase.from('profiles').select('*').order('username'),
       supabase.from('rooms').select('*').order('room_number'),
       supabase.from('room_access').select('*'),
+      supabase.from('user_roles').select('user_id, role'),
     ]);
 
     if (usersRes.data) setUsers(usersRes.data as Profile[]);
     if (roomsRes.data) setRooms(roomsRes.data as Room[]);
     if (accessRes.data) setRoomAccess(accessRes.data as RoomAccess[]);
+    if (rolesRes.data) setUserRoles(rolesRes.data);
     setLoading(false);
   };
 
@@ -91,6 +94,10 @@ export default function Admin() {
       setRoomAccess(prev => [...prev, data as RoomAccess]);
     }
     toast.success('Room access updated');
+  };
+
+  const isUserAdmin = (userId: string) => {
+    return userRoles.some(r => r.user_id === userId && r.role === 'admin');
   };
 
   const hasRoomAccess = (userId: string, roomId: string) => {
@@ -190,7 +197,7 @@ export default function Admin() {
                 </thead>
                 <tbody>
                   {users
-                    .filter((u) => !u.is_admin)
+                    .filter((u) => !isUserAdmin(u.user_id))
                     .map((user) => (
                       <tr key={user.id} className="border-b">
                         <td className="p-2">

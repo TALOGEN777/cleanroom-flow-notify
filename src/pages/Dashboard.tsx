@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '@/hooks/useNotifications';
 
 export default function Dashboard() {
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, isAdmin } = useAuth();
   const { rooms, loading, updateRoomStatus, canAccessRoom, refetch } = useRooms();
   const { unreadCount } = useNotifications();
   const navigate = useNavigate();
@@ -32,7 +32,7 @@ export default function Dashboard() {
               <h1 className="text-lg font-semibold">Cleanroom Ready</h1>
               <p className="text-xs text-muted-foreground">
                 {profile?.display_name}
-                {profile?.is_admin && ' (Admin)'}
+                {isAdmin && ' (Admin)'}
               </p>
             </div>
           </div>
@@ -56,7 +56,7 @@ export default function Dashboard() {
               )}
             </Button>
             
-            {profile?.is_admin && (
+            {isAdmin && (
               <Button variant="ghost" size="icon" onClick={() => navigate('/admin')}>
                 <Settings className="h-5 w-5" />
               </Button>
