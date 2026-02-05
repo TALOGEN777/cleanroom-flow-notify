@@ -10,8 +10,8 @@ interface StatusBadgeProps {
 const statusConfig: Record<RoomStatus, { label: string; className: string; indicatorColor: string }> = {
   occupied: {
     label: 'Occupied',
-    className: 'bg-red-950 text-red-100 border-2 border-red-400 shadow-lg',
-    indicatorColor: 'bg-red-400',
+    className: 'bg-red-600 text-white border-2 border-red-300 shadow-lg',
+    indicatorColor: 'bg-white',
   },
   awaiting_cleaning: {
     label: 'Awaiting Cleaning',
