@@ -155,7 +155,7 @@ export function RoomCard({ room, canAccess, onUpdateStatus }: RoomCardProps) {
                 <Button
                   onClick={handleWorkFinished}
                   disabled={isUpdating}
-                  className="touch-button w-full bg-slate-900 text-red-100 hover:bg-slate-800 font-bold shadow-xl border-2 border-slate-700"
+                  className="touch-button w-full bg-red-950 text-red-100 hover:bg-red-900 font-bold shadow-xl border-2 border-red-800"
                   size="lg"
                 >
                   {isUpdating ? (
