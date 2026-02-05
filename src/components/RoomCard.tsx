@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Room, RoomStatus } from '@/lib/types';
 import { StatusBadge } from './StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { CheckCircle, Clock, Loader2, Lock } from 'lucide-react';
+import { CheckCircle, Clock, Loader2, Lock, User, Calendar } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { formatDistanceToNow } from 'date-fns';
 
 interface RoomCardProps {
   room: Room;
@@ -18,6 +20,25 @@ const incubatorOptions = ['1', '2', '3', '4', '5', 'No Incubator'];
 export function RoomCard({ room, canAccess, onUpdateStatus }: RoomCardProps) {
   const [selectedIncubator, setSelectedIncubator] = useState<string>('No Incubator');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [changedByName, setChangedByName] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (room.last_changed_by) {
+      fetchChangedByName(room.last_changed_by);
+    }
+  }, [room.last_changed_by]);
+
+  const fetchChangedByName = async (userId: string) => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('display_name')
+      .eq('user_id', userId)
+      .single();
+    
+    if (data) {
+      setChangedByName(data.display_name);
+    }
+  };
 
   const handleWorkFinished = async () => {
     setIsUpdating(true);
@@ -46,22 +67,43 @@ export function RoomCard({ room, canAccess, onUpdateStatus }: RoomCardProps) {
     !canAccess && 'opacity-60'
   );
 
+  const getTimeAgo = () => {
+    if (!room.last_status_change) return null;
+    return formatDistanceToNow(new Date(room.last_status_change), { addSuffix: true });
+  };
+
   return (
     <Card className={cardClassName}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold">Room {room.room_number}</h2>
-          <StatusBadge status={room.status} animated={room.status === 'awaiting_cleaning'} />
+          <StatusBadge status={room.status} animated={room.status === 'occupied'} />
         </div>
         {room.incubator_number && (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm opacity-80">
             Incubator: {room.incubator_number}
           </p>
+        )}
+        
+        {/* Timestamp and user info */}
+        {room.last_status_change && (
+          <div className="mt-2 space-y-1 text-sm opacity-80">
+            <div className="flex items-center gap-1.5">
+              <Calendar className="h-3.5 w-3.5" />
+              <span>{getTimeAgo()}</span>
+            </div>
+            {changedByName && (
+              <div className="flex items-center gap-1.5">
+                <User className="h-3.5 w-3.5" />
+                <span>by {changedByName}</span>
+              </div>
+            )}
+          </div>
         )}
       </CardHeader>
       <CardContent className="space-y-4">
         {!canAccess ? (
-          <div className="flex items-center gap-2 text-muted-foreground">
+          <div className="flex items-center gap-2 opacity-80">
             <Lock className="h-4 w-4" />
             <span className="text-sm">No access to this room</span>
           </div>
@@ -70,7 +112,7 @@ export function RoomCard({ room, canAccess, onUpdateStatus }: RoomCardProps) {
             {room.status === 'ready' && (
               <>
                 <Select value={selectedIncubator} onValueChange={setSelectedIncubator}>
-                  <SelectTrigger className="touch-button">
+                  <SelectTrigger className="touch-button bg-white/20 border-white/30 text-white">
                     <SelectValue placeholder="Select incubator" />
                   </SelectTrigger>
                   <SelectContent>
@@ -84,7 +126,7 @@ export function RoomCard({ room, canAccess, onUpdateStatus }: RoomCardProps) {
                 <Button
                   onClick={handleSetOccupied}
                   disabled={isUpdating}
-                  className="touch-button w-full bg-amber-500 hover:bg-amber-600 text-amber-950"
+                  className="touch-button w-full bg-white text-emerald-700 hover:bg-white/90"
                 >
                   {isUpdating ? (
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -99,7 +141,7 @@ export function RoomCard({ room, canAccess, onUpdateStatus }: RoomCardProps) {
             {room.status === 'occupied' && (
               <>
                 <Select value={selectedIncubator} onValueChange={setSelectedIncubator}>
-                  <SelectTrigger className="touch-button">
+                  <SelectTrigger className="touch-button bg-white/20 border-white/30 text-white">
                     <SelectValue placeholder="Select incubator" />
                   </SelectTrigger>
                   <SelectContent>
@@ -113,7 +155,7 @@ export function RoomCard({ room, canAccess, onUpdateStatus }: RoomCardProps) {
                 <Button
                   onClick={handleWorkFinished}
                   disabled={isUpdating}
-                  className="touch-button w-full"
+                  className="touch-button w-full bg-red-900 text-white hover:bg-red-950"
                   size="lg"
                 >
                   {isUpdating ? (
@@ -130,7 +172,7 @@ export function RoomCard({ room, canAccess, onUpdateStatus }: RoomCardProps) {
               <Button
                 onClick={handleRoomReady}
                 disabled={isUpdating}
-                className="touch-button w-full bg-emerald-500 hover:bg-emerald-600"
+                className="touch-button w-full bg-white text-orange-700 hover:bg-white/90"
                 size="lg"
               >
                 {isUpdating ? (
