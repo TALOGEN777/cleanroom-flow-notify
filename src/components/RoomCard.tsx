@@ -172,7 +172,7 @@ export function RoomCard({ room, canAccess, onUpdateStatus }: RoomCardProps) {
               <Button
                 onClick={handleRoomReady}
                 disabled={isUpdating}
-                className="touch-button w-full bg-cyan-400 text-amber-900 hover:bg-cyan-300 font-bold shadow-xl border-2 border-cyan-500"
+                className="touch-button w-full bg-orange-900 text-orange-100 hover:bg-orange-800 font-bold shadow-xl border-2 border-orange-700"
                 size="lg"
               >
                 {isUpdating ? (
@@ -180,7 +180,7 @@ export function RoomCard({ room, canAccess, onUpdateStatus }: RoomCardProps) {
                 ) : (
                   <CheckCircle className="mr-2 h-5 w-5" />
                 )}
-                Cleaning Complete - Room Ready
+                Cleaning Complete
               </Button>
             )}
           </>
