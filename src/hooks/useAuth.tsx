@@ -25,33 +25,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [userRole, setUserRole] = useState<AppRole | null>(null);
 
-  const fetchUserRole = async (userId: string): Promise<AppRole | null> => {
-    const { data } = await supabase
+  const fetchUserData = async (userId: string) => {
+    // Fetch profile
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
+    
+    setProfile(profileData as Profile | null);
+
+    // Fetch role
+    const { data: roleData } = await supabase
       .from('user_roles')
       .select('role')
       .eq('user_id', userId)
       .maybeSingle();
     
-    return data?.role as AppRole | null;
+    const role = roleData?.role as AppRole | null;
+    setUserRole(role);
+    setIsAdmin(role === 'admin');
   };
 
   useEffect(() => {
+    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .maybeSingle();
-        
-        setProfile(profileData as Profile | null);
-        
-        const role = await fetchUserRole(session.user.id);
-        setUserRole(role);
-        setIsAdmin(role === 'admin');
+        // Use setTimeout to avoid blocking the auth state change
+        setTimeout(() => fetchUserData(session.user.id), 0);
       } else {
         setProfile(null);
         setUserRole(null);
@@ -61,45 +65,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
+    // THEN check for existing session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        const { data } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .maybeSingle();
-        
-        setProfile(data as Profile | null);
-        
-        const role = await fetchUserRole(session.user.id);
-        setUserRole(role);
-        setIsAdmin(role === 'admin');
-        setLoading(false);
-      } else {
-        setLoading(false);
+        await fetchUserData(session.user.id);
       }
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
   const signIn = async (username: string, password: string): Promise<{ error: string | null }> => {
-    // Find user by username
-    const { data: profileData, error: profileError } = await supabase
-      .from('profiles')
-      .select('user_id')
-      .eq('username', username.toLowerCase())
-      .maybeSingle();
-
-    if (profileError || !profileData) {
-      return { error: 'Invalid username or password' };
-    }
-
-    // Get the user's email from auth
-    const email = `${username.toLowerCase()}@cleanroom.local`;
+    const email = `${username.toLowerCase().trim()}@cleanroom.local`;
     
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -107,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     if (error) {
+      console.error('Sign in error:', error.message);
       return { error: 'Invalid username or password' };
     }
 
@@ -114,52 +96,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (username: string, password: string, displayName: string): Promise<{ error: string | null }> => {
-    const email = `${username.toLowerCase()}@cleanroom.local`;
+    const cleanUsername = username.toLowerCase().trim();
+    const email = `${cleanUsername}@cleanroom.local`;
     
-    const { data, error } = await supabase.auth.signUp({
+    // Check if username already exists
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('username', cleanUsername)
+      .maybeSingle();
+
+    if (existingProfile) {
+      return { error: 'Username already exists' };
+    }
+
+    const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
-          username: username.toLowerCase(),
-          display_name: displayName,
+          username: cleanUsername,
+          display_name: displayName.trim(),
         },
       },
     });
 
     if (error) {
+      console.error('Sign up error:', error.message);
       if (error.message.includes('already registered')) {
         return { error: 'Username already exists' };
       }
       return { error: error.message };
-    }
-
-    if (data.user) {
-      // Check if this is the Admin user
-      const isAdminUser = username.toLowerCase() === 'admin';
-      
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          user_id: data.user.id,
-          username: username.toLowerCase(),
-          display_name: displayName,
-          receives_notifications: isAdminUser,
-        });
-
-      if (profileError) {
-        return { error: 'Failed to create profile' };
-      }
-
-      // Add admin role if this is the admin user
-      if (isAdminUser) {
-        await supabase
-          .from('user_roles')
-          .insert({
-            user_id: data.user.id,
-            role: 'admin',
-          });
-      }
     }
 
     return { error: null };

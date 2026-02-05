@@ -23,6 +23,12 @@ export default function Login() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!loginUsername.trim() || !loginPassword) {
+      toast.error('Please enter username and password');
+      return;
+    }
+    
     setIsLoading(true);
     
     const { error } = await signIn(loginUsername, loginPassword);
@@ -39,6 +45,17 @@ export default function Login() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!signupUsername.trim() || !signupDisplayName.trim() || !signupPassword) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+    
+    if (signupPassword.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+    
     setIsLoading(true);
     
     const { error } = await signUp(signupUsername, signupPassword, signupDisplayName);
@@ -46,7 +63,7 @@ export default function Login() {
     if (error) {
       toast.error(error);
     } else {
-      toast.success('Account created! You can now sign in.');
+      toast.success('Account created! Welcome!');
       navigate('/');
     }
     
@@ -62,7 +79,7 @@ export default function Login() {
           </div>
           <CardTitle className="text-2xl font-bold">Cleanroom Ready</CardTitle>
           <CardDescription>
-            Manage cleanroom status and notifications
+            Sign in with your username (no email required)
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -81,7 +98,7 @@ export default function Login() {
                     placeholder="Enter your username"
                     value={loginUsername}
                     onChange={(e) => setLoginUsername(e.target.value)}
-                    required
+                    autoComplete="username"
                     className="touch-button"
                   />
                 </div>
@@ -93,7 +110,7 @@ export default function Login() {
                     placeholder="Enter your password"
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
-                    required
+                    autoComplete="current-password"
                     className="touch-button"
                   />
                 </div>
@@ -113,7 +130,7 @@ export default function Login() {
                     placeholder="Choose a username"
                     value={signupUsername}
                     onChange={(e) => setSignupUsername(e.target.value)}
-                    required
+                    autoComplete="username"
                     className="touch-button"
                   />
                 </div>
@@ -124,7 +141,7 @@ export default function Login() {
                     placeholder="Your name"
                     value={signupDisplayName}
                     onChange={(e) => setSignupDisplayName(e.target.value)}
-                    required
+                    autoComplete="name"
                     className="touch-button"
                   />
                 </div>
@@ -133,11 +150,10 @@ export default function Login() {
                   <Input
                     id="signup-password"
                     type="password"
-                    placeholder="Create a password"
+                    placeholder="Create a password (min 6 chars)"
                     value={signupPassword}
                     onChange={(e) => setSignupPassword(e.target.value)}
-                    required
-                    minLength={6}
+                    autoComplete="new-password"
                     className="touch-button"
                   />
                 </div>
