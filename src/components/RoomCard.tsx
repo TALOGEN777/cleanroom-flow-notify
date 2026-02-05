@@ -112,7 +112,7 @@ export function RoomCard({ room, canAccess, onUpdateStatus }: RoomCardProps) {
             {room.status === 'ready' && (
               <>
                 <Select value={selectedIncubator} onValueChange={setSelectedIncubator}>
-                  <SelectTrigger className="touch-button bg-white/20 border-white/30 text-white">
+                  <SelectTrigger className="touch-button bg-white/90 border-white text-emerald-800 font-medium">
                     <SelectValue placeholder="Select incubator" />
                   </SelectTrigger>
                   <SelectContent>
@@ -126,7 +126,7 @@ export function RoomCard({ room, canAccess, onUpdateStatus }: RoomCardProps) {
                 <Button
                   onClick={handleSetOccupied}
                   disabled={isUpdating}
-                  className="touch-button w-full bg-white text-emerald-700 hover:bg-white/90"
+                  className="touch-button w-full bg-white text-emerald-700 hover:bg-emerald-50 font-bold shadow-lg border-2 border-emerald-200"
                 >
                   {isUpdating ? (
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -141,7 +141,7 @@ export function RoomCard({ room, canAccess, onUpdateStatus }: RoomCardProps) {
             {room.status === 'occupied' && (
               <>
                 <Select value={selectedIncubator} onValueChange={setSelectedIncubator}>
-                  <SelectTrigger className="touch-button bg-white/20 border-white/30 text-white">
+                  <SelectTrigger className="touch-button bg-white/90 border-white text-red-800 font-medium">
                     <SelectValue placeholder="Select incubator" />
                   </SelectTrigger>
                   <SelectContent>
@@ -155,7 +155,7 @@ export function RoomCard({ room, canAccess, onUpdateStatus }: RoomCardProps) {
                 <Button
                   onClick={handleWorkFinished}
                   disabled={isUpdating}
-                  className="touch-button w-full bg-red-900 text-white hover:bg-red-950"
+                  className="touch-button w-full bg-red-950 text-white hover:bg-red-900 font-bold shadow-lg border-2 border-red-800"
                   size="lg"
                 >
                   {isUpdating ? (
@@ -172,7 +172,7 @@ export function RoomCard({ room, canAccess, onUpdateStatus }: RoomCardProps) {
               <Button
                 onClick={handleRoomReady}
                 disabled={isUpdating}
-                className="touch-button w-full bg-white text-orange-700 hover:bg-white/90"
+                className="touch-button w-full bg-white text-orange-700 hover:bg-orange-50 font-bold shadow-lg border-2 border-orange-200"
                 size="lg"
               >
                 {isUpdating ? (
