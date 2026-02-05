@@ -141,7 +141,7 @@ export function RoomCard({ room, canAccess, onUpdateStatus }: RoomCardProps) {
             {room.status === 'occupied' && (
               <>
                 <Select value={selectedIncubator} onValueChange={setSelectedIncubator}>
-                  <SelectTrigger className="touch-button bg-red-900/80 border-2 border-red-300 text-red-100 font-medium">
+                  <SelectTrigger className="touch-button bg-red-600 border-2 border-red-300 text-white font-medium">
                     <SelectValue placeholder="Select incubator" />
                   </SelectTrigger>
                   <SelectContent>
