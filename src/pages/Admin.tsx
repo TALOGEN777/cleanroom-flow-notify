@@ -2,15 +2,14 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { Profile, Room, RoomAccess } from '@/lib/types';
+import { Profile, Room, RoomAccess, AppRole } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Users, Bell, Building2 } from 'lucide-react';
+import { ArrowLeft, Users } from 'lucide-react';
 import { toast } from 'sonner';
+import { UserRolesCard } from '@/components/admin/UserRolesCard';
+import { NotificationRecipientsCard } from '@/components/admin/NotificationRecipientsCard';
+import { RoomAccessCard } from '@/components/admin/RoomAccessCard';
 
 export default function Admin() {
   const navigate = useNavigate();
@@ -44,6 +43,42 @@ export default function Admin() {
     setLoading(false);
   };
 
+  const handleRoleChange = async (userId: string, newRole: AppRole | null) => {
+    // Remove existing role first
+    const { error: deleteError } = await supabase
+      .from('user_roles')
+      .delete()
+      .eq('user_id', userId);
+
+    if (deleteError) {
+      toast.error('Failed to update role');
+      return;
+    }
+
+    // Add new role if not 'none'
+    if (newRole) {
+      const { error: insertError } = await supabase
+        .from('user_roles')
+        .insert({ user_id: userId, role: newRole });
+
+      if (insertError) {
+        toast.error('Failed to update role');
+        return;
+      }
+    }
+
+    // Update local state
+    setUserRoles(prev => {
+      const filtered = prev.filter(r => r.user_id !== userId);
+      if (newRole) {
+        return [...filtered, { user_id: userId, role: newRole }];
+      }
+      return filtered;
+    });
+    
+    toast.success('User role updated');
+  };
+
   const toggleNotifications = async (userId: string, currentValue: boolean) => {
     const { error } = await supabase
       .from('profiles')
@@ -65,7 +100,6 @@ export default function Admin() {
 
   const toggleRoomAccess = async (userId: string, roomId: string, hasAccess: boolean) => {
     if (hasAccess) {
-      // Remove access
       const { error } = await supabase
         .from('room_access')
         .delete()
@@ -79,7 +113,6 @@ export default function Admin() {
 
       setRoomAccess(prev => prev.filter(ra => !(ra.user_id === userId && ra.room_id === roomId)));
     } else {
-      // Add access
       const { data, error } = await supabase
         .from('room_access')
         .insert({ user_id: userId, room_id: roomId })
@@ -96,14 +129,6 @@ export default function Admin() {
     toast.success('Room access updated');
   };
 
-  const isUserAdmin = (userId: string) => {
-    return userRoles.some(r => r.user_id === userId && r.role === 'admin');
-  };
-
-  const hasRoomAccess = (userId: string, roomId: string) => {
-    return roomAccess.some(ra => ra.user_id === userId && ra.room_id === roomId);
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-background p-4">
@@ -116,7 +141,6 @@ export default function Admin() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
         <div className="container mx-auto flex h-16 items-center gap-3 px-4">
           <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
@@ -129,104 +153,25 @@ export default function Admin() {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="container mx-auto space-y-6 px-4 py-6">
-        {/* Notification Recipients */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Bell className="h-5 w-5" />
-              Notification Recipients
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Choose which users receive notifications when room status changes.
-            </p>
-            <div className="space-y-3">
-              {users.map((user) => (
-                <div
-                  key={user.id}
-                  className="flex items-center justify-between rounded-lg border p-3"
-                >
-                  <div>
-                    <p className="font-medium">{user.display_name}</p>
-                    <p className="text-sm text-muted-foreground">@{user.username}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor={`notif-${user.id}`} className="text-sm">
-                      Receives notifications
-                    </Label>
-                    <Switch
-                      id={`notif-${user.id}`}
-                      checked={user.receives_notifications}
-                      onCheckedChange={() =>
-                        toggleNotifications(user.user_id, user.receives_notifications)
-                      }
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <UserRolesCard 
+          users={users} 
+          userRoles={userRoles} 
+          onRoleChange={handleRoleChange} 
+        />
+        
+        <RoomAccessCard
+          users={users}
+          rooms={rooms}
+          roomAccess={roomAccess}
+          userRoles={userRoles}
+          onToggleRoomAccess={toggleRoomAccess}
+        />
 
-        {/* Room Access */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
-              Room Access Control
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Control which users can update the status of each room.
-            </p>
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="border-b">
-                    <th className="p-2 text-left font-medium">User</th>
-                    {rooms.map((room) => (
-                      <th key={room.id} className="p-2 text-center font-medium">
-                        Room {room.room_number}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {users
-                    .filter((u) => !isUserAdmin(u.user_id))
-                    .map((user) => (
-                      <tr key={user.id} className="border-b">
-                        <td className="p-2">
-                          <p className="font-medium">{user.display_name}</p>
-                        </td>
-                        {rooms.map((room) => (
-                          <td key={room.id} className="p-2 text-center">
-                            <Checkbox
-                              checked={hasRoomAccess(user.user_id, room.id)}
-                              onCheckedChange={() =>
-                                toggleRoomAccess(
-                                  user.user_id,
-                                  room.id,
-                                  hasRoomAccess(user.user_id, room.id)
-                                )
-                              }
-                            />
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Note: Admins have access to all rooms by default.
-            </p>
-          </CardContent>
-        </Card>
+        <NotificationRecipientsCard 
+          users={users} 
+          onToggleNotifications={toggleNotifications} 
+        />
       </main>
     </div>
   );

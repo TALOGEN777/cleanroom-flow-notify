@@ -5,7 +5,7 @@ import { useAuth } from './useAuth';
 import { toast } from 'sonner';
 
 export function useRooms() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, userRole } = useAuth();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [accessibleRoomIds, setAccessibleRoomIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -144,7 +144,9 @@ export function useRooms() {
   };
 
   const canAccessRoom = (roomId: string) => {
-    if (isAdmin) return true;
+    // Admins and Operation Team have access to all rooms
+    if (isAdmin || userRole === 'operation_team') return true;
+    // Operators only have access to assigned rooms
     return accessibleRoomIds.includes(roomId);
   };
 
