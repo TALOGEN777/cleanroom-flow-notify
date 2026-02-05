@@ -15,8 +15,8 @@ const statusConfig: Record<RoomStatus, { label: string; className: string; indic
   },
   awaiting_cleaning: {
     label: 'Awaiting Cleaning',
-    className: 'bg-amber-900 text-amber-100 border-2 border-amber-400 shadow-lg',
-    indicatorColor: 'bg-amber-400',
+    className: 'bg-amber-500 text-white border-2 border-amber-300 shadow-lg',
+    indicatorColor: 'bg-white',
   },
   ready: {
     label: 'Ready',
