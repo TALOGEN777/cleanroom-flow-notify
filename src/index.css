@@ -165,7 +165,7 @@
   }
 
   .room-card {
-    @apply rounded-xl border-[6px] p-6 transition-all duration-300 hover:shadow-xl shadow-md backdrop-blur-sm;
+    @apply rounded-xl !border-[6px] p-6 transition-all duration-300 hover:shadow-xl shadow-md backdrop-blur-sm;
   }
 
   .room-card-occupied {
