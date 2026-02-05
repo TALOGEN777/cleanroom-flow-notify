@@ -165,19 +165,19 @@
   }
 
   .room-card {
-    @apply rounded-2xl border-[6px] p-6 transition-all duration-300 hover:shadow-2xl shadow-lg;
+    @apply rounded-xl border-2 p-6 transition-all duration-300 hover:shadow-xl shadow-md backdrop-blur-sm;
   }
 
   .room-card-occupied {
-    @apply border-red-300 bg-gradient-to-br from-red-600 to-red-700 text-white;
+    @apply border-red-200 bg-red-500 text-white;
   }
 
   .room-card-awaiting {
-    @apply border-amber-300 bg-gradient-to-br from-amber-500 to-orange-600 text-white;
+    @apply border-amber-200 bg-amber-500 text-white;
   }
 
   .room-card-ready {
-    @apply border-emerald-300 bg-gradient-to-br from-emerald-500 to-teal-600 text-white;
+    @apply border-emerald-200 bg-emerald-500 text-white;
   }
 }
 
