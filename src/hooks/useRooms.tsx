@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Room, RoomStatus } from '@/lib/types';
 import { useAuth } from './useAuth';
@@ -12,75 +12,67 @@ export function useRooms() {
   const [loading, setLoading] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
 
-  // Refs for cleanup
+  // Refs for cleanup and state access in callbacks
   const channelRef = useRef<RealtimeChannel | null>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const retryCountRef = useRef(0);
+  const roomsRef = useRef<Room[]>([]);
 
-  const clearPolling = useCallback(() => {
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-      pollingIntervalRef.current = null;
+  // Keep roomsRef in sync
+  useEffect(() => {
+    roomsRef.current = rooms;
+  }, [rooms]);
+
+  const fetchRooms = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('rooms')
+        .select('*')
+        .order('room_number');
+
+      if (error) {
+        console.error('Error fetching rooms:', error);
+        return;
+      }
+
+      setRooms(data as Room[]);
+      setLoading(false);
+    } catch (err) {
+      console.error('Error fetching rooms:', err);
     }
-  }, []);
+  };
 
-  const clearRetry = useCallback(() => {
-    if (retryTimeoutRef.current) {
-      clearTimeout(retryTimeoutRef.current);
-      retryTimeoutRef.current = null;
+  const fetchRoomAccess = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('room_access')
+        .select('room_id')
+        .eq('user_id', userId);
+
+      if (error) {
+        console.error('Error fetching room access:', error);
+        return;
+      }
+
+      setAccessibleRoomIds(data.map(ra => ra.room_id));
+    } catch (err) {
+      console.error('Error fetching room access:', err);
     }
-  }, []);
+  };
 
-  const fetchRooms = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('rooms')
-      .select('*')
-      .order('room_number');
-
-    if (error) {
-      console.error('Error fetching rooms:', error);
+  useEffect(() => {
+    if (!user) {
+      setRooms([]);
+      setLoading(false);
       return;
     }
 
-    setRooms(data as Room[]);
-    setLoading(false);
-  }, []);
+    // Initial fetch
+    fetchRooms();
+    fetchRoomAccess(user.id);
 
-  const fetchRoomAccess = useCallback(async () => {
-    if (!user) return;
-
-    const { data, error } = await supabase
-      .from('room_access')
-      .select('room_id')
-      .eq('user_id', user.id);
-
-    if (error) {
-      console.error('Error fetching room access:', error);
-      return;
-    }
-
-    setAccessibleRoomIds(data.map(ra => ra.room_id));
-  }, [user]);
-
-  const startPolling = useCallback(() => {
-    clearPolling();
-    console.log('[Realtime] Starting fallback polling (every 10s)');
-    pollingIntervalRef.current = setInterval(() => {
-      fetchRooms();
-    }, 10000); // Poll every 10 seconds as fallback
-  }, [clearPolling, fetchRooms]);
-
-  const setupRealtimeSubscription = useCallback(() => {
-    if (!user) return;
-
-    // Clean up existing channel
-    if (channelRef.current) {
-      supabase.removeChannel(channelRef.current);
-    }
-
-    console.log('[Realtime] Setting up subscription...');
-
+    // Setup realtime subscription
     const channel = supabase
       .channel('rooms-changes')
       .on(
@@ -95,7 +87,7 @@ export function useRooms() {
               )
             );
           } else if (payload.eventType === 'INSERT') {
-            setRooms(prev => [...prev, payload.new as Room].sort((a, b) => 
+            setRooms(prev => [...prev, payload.new as Room].sort((a, b) =>
               a.room_number.localeCompare(b.room_number)
             ));
           } else if (payload.eventType === 'DELETE') {
@@ -109,48 +101,39 @@ export function useRooms() {
         if (status === 'SUBSCRIBED') {
           setIsConnected(true);
           retryCountRef.current = 0;
-          clearPolling(); // Stop polling when connected
-          clearRetry();
+          // Clear polling when connected
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+          }
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
           setIsConnected(false);
-          startPolling(); // Start polling as fallback
-
-          // Retry with exponential backoff
-          const retryDelay = Math.min(1000 * Math.pow(2, retryCountRef.current), 30000);
-          retryCountRef.current++;
-          
-          console.log(`[Realtime] Will retry in ${retryDelay / 1000}s (attempt ${retryCountRef.current})`);
-          
-          clearRetry();
-          retryTimeoutRef.current = setTimeout(() => {
-            setupRealtimeSubscription();
-          }, retryDelay);
+          // Start polling as fallback
+          if (!pollingIntervalRef.current) {
+            console.log('[Realtime] Starting fallback polling');
+            pollingIntervalRef.current = setInterval(fetchRooms, 10000);
+          }
         }
       });
 
     channelRef.current = channel;
-  }, [user, clearPolling, clearRetry, startPolling]);
 
-  useEffect(() => {
-    if (!user) {
-      setRooms([]);
-      setLoading(false);
-      return;
-    }
-
-    fetchRooms();
-    fetchRoomAccess();
-    setupRealtimeSubscription();
-
+    // Cleanup
     return () => {
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
-      clearPolling();
-      clearRetry();
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = null;
+      }
     };
-  }, [user, fetchRooms, fetchRoomAccess, setupRealtimeSubscription, clearPolling, clearRetry]);
+  }, [user?.id]);
 
   const updateRoomStatus = async (
     roomId: string,
@@ -159,30 +142,35 @@ export function useRooms() {
   ) => {
     if (!user) return { error: 'Not authenticated' };
 
-    const { error } = await supabase
-      .from('rooms')
-      .update({
-        status: newStatus,
-        last_status_change: new Date().toISOString(),
-        last_changed_by: user.id,
-        incubator_number: incubatorNumber ?? null,
-      })
-      .eq('id', roomId);
+    try {
+      const { error } = await supabase
+        .from('rooms')
+        .update({
+          status: newStatus,
+          last_status_change: new Date().toISOString(),
+          last_changed_by: user.id,
+          incubator_number: incubatorNumber ?? null,
+        })
+        .eq('id', roomId);
 
-    if (error) {
-      console.error('Error updating room:', error);
-      return { error: error.message };
+      if (error) {
+        console.error('Error updating room:', error);
+        return { error: error.message };
+      }
+
+      // Send notifications
+      if (newStatus === 'awaiting_cleaning') {
+        await sendNotifications(roomId, 'work_finished', incubatorNumber);
+      } else if (newStatus === 'ready') {
+        await sendNotifications(roomId, 'cleaning_complete', null);
+      }
+
+      toast.success(`Room status updated to ${newStatus.replace('_', ' ')}`);
+      return { error: null };
+    } catch (err) {
+      console.error('Error updating room:', err);
+      return { error: 'Failed to update room' };
     }
-
-    // Send notifications to users who receive notifications
-    if (newStatus === 'awaiting_cleaning') {
-      await sendNotifications(roomId, 'work_finished', incubatorNumber);
-    } else if (newStatus === 'ready') {
-      await sendNotifications(roomId, 'cleaning_complete', null);
-    }
-
-    toast.success(`Room status updated to ${newStatus.replace('_', ' ')}`);
-    return { error: null };
   };
 
   const sendNotifications = async (
@@ -192,39 +180,39 @@ export function useRooms() {
   ) => {
     if (!user) return;
 
-    // Get all users who should receive notifications
-    const { data: recipients, error } = await supabase
-      .from('profiles')
-      .select('user_id')
-      .eq('receives_notifications', true);
+    try {
+      const { data: recipients, error } = await supabase
+        .from('profiles')
+        .select('user_id')
+        .eq('receives_notifications', true);
 
-    if (error || !recipients) return;
+      if (error || !recipients) return;
 
-    const room = rooms.find(r => r.id === roomId);
-    if (!room) return;
+      const room = roomsRef.current.find(r => r.id === roomId);
+      if (!room) return;
 
-    const message = type === 'work_finished'
-      ? `Room ${room.room_number} is now clear${incubatorNumber ? ` (Incubator: ${incubatorNumber})` : ''}. Ready for cleaning.`
-      : `Room ${room.room_number} cleaning complete. Room is ready.`;
+      const message = type === 'work_finished'
+        ? `Room ${room.room_number} is now clear${incubatorNumber ? ` (Incubator: ${incubatorNumber})` : ''}. Ready for cleaning.`
+        : `Room ${room.room_number} cleaning complete. Room is ready.`;
 
-    // Create notifications for each recipient
-    for (const recipient of recipients) {
-      if (recipient.user_id !== user.id) {
-        await supabase.from('notifications').insert({
-          room_id: roomId,
-          sender_id: user.id,
-          recipient_id: recipient.user_id,
-          notification_type: type,
-          message,
-        });
+      for (const recipient of recipients) {
+        if (recipient.user_id !== user.id) {
+          await supabase.from('notifications').insert({
+            room_id: roomId,
+            sender_id: user.id,
+            recipient_id: recipient.user_id,
+            notification_type: type,
+            message,
+          });
+        }
       }
+    } catch (err) {
+      console.error('Error sending notifications:', err);
     }
   };
 
   const canAccessRoom = (roomId: string) => {
-    // Admins and Operation Team have access to all rooms
     if (isAdmin || userRole === 'operation_team') return true;
-    // Operators only have access to assigned rooms
     return accessibleRoomIds.includes(roomId);
   };
 
