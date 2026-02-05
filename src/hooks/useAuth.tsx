@@ -1,7 +1,7 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
-import { Profile } from '@/lib/types';
+import { Profile, AppRole } from '@/lib/types';
 
 interface AuthContextType {
   user: User | null;
@@ -9,6 +9,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   isAdmin: boolean;
+  userRole: AppRole | null;
   signIn: (username: string, password: string) => Promise<{ error: string | null }>;
   signUp: (username: string, password: string, displayName: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -22,16 +23,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [userRole, setUserRole] = useState<AppRole | null>(null);
 
-  const checkAdminRole = async (userId: string) => {
+  const fetchUserRole = async (userId: string): Promise<AppRole | null> => {
     const { data } = await supabase
       .from('user_roles')
       .select('role')
       .eq('user_id', userId)
-      .eq('role', 'admin')
       .maybeSingle();
     
-    return !!data;
+    return data?.role as AppRole | null;
   };
 
   useEffect(() => {
@@ -48,10 +49,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         setProfile(profileData as Profile | null);
         
-        const adminStatus = await checkAdminRole(session.user.id);
-        setIsAdmin(adminStatus);
+        const role = await fetchUserRole(session.user.id);
+        setUserRole(role);
+        setIsAdmin(role === 'admin');
       } else {
         setProfile(null);
+        setUserRole(null);
         setIsAdmin(false);
       }
       
@@ -71,8 +74,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         setProfile(data as Profile | null);
         
-        const adminStatus = await checkAdminRole(session.user.id);
-        setIsAdmin(adminStatus);
+        const role = await fetchUserRole(session.user.id);
+        setUserRole(role);
+        setIsAdmin(role === 'admin');
         setLoading(false);
       } else {
         setLoading(false);
@@ -166,11 +170,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setProfile(null);
     setSession(null);
+    setUserRole(null);
     setIsAdmin(false);
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, session, loading, isAdmin, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, profile, session, loading, isAdmin, userRole, signIn, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   );
