@@ -126,7 +126,7 @@ export function RoomCard({ room, canAccess, onUpdateStatus }: RoomCardProps) {
                 <Button
                   onClick={handleSetOccupied}
                   disabled={isUpdating}
-                  className="touch-button w-full bg-yellow-400 text-emerald-900 hover:bg-yellow-300 font-bold shadow-xl border-2 border-yellow-500"
+                  className="touch-button w-full bg-emerald-900 text-emerald-100 hover:bg-emerald-800 font-bold shadow-xl border-2 border-emerald-700"
                 >
                   {isUpdating ? (
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
