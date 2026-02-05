@@ -133,15 +133,15 @@
   }
   
   .room-card-occupied {
-    @apply border-amber-300 bg-amber-50;
+    @apply border-red-400 bg-red-500 text-white;
   }
   
   .room-card-awaiting {
-    @apply border-primary/30 bg-primary/5;
+    @apply border-orange-400 bg-orange-500 text-white;
   }
   
   .room-card-ready {
-    @apply border-emerald-300 bg-emerald-50;
+    @apply border-emerald-400 bg-emerald-500 text-white;
   }
 }
 

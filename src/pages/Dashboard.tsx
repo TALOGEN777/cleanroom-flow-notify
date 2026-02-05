@@ -99,26 +99,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Status Legend */}
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle className="text-base">Status Legend</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-4">
-            <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-emerald-500" />
-              <span className="text-sm">Ready - Available for use</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-amber-500" />
-              <span className="text-sm">Occupied - Work in progress</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-primary" />
-              <span className="text-sm">Awaiting Cleaning - Needs cleaning</span>
-            </div>
-          </CardContent>
-        </Card>
       </main>
     </div>
   );
