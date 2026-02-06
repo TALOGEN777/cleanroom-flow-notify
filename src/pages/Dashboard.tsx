@@ -1,6 +1,7 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useRooms } from '@/hooks/useRooms';
 import { RoomCard } from '@/components/RoomCard';
+import { NotificationPermission } from '@/components/NotificationPermission';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -9,7 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '@/hooks/useNotifications';
 
 export default function Dashboard() {
-  const { profile, signOut, isAdmin } = useAuth();
+  const { profile, signOut, isAdmin, userRole } = useAuth();
   const { rooms, loading, updateRoomStatus, canAccessRoom, refetch } = useRooms();
   const { unreadCount } = useNotifications();
   const navigate = useNavigate();
@@ -88,18 +89,30 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {rooms.map((room) => (
-              <RoomCard
-                key={room.id}
-                room={room}
-                canAccess={canAccessRoom(room.id)}
-                onUpdateStatus={updateRoomStatus}
-              />
-            ))}
+            {rooms
+              .filter((room) => {
+                // Admins and Operation Team can see all rooms
+                if (isAdmin || userRole === 'operation_team') return true;
+                // Others can only see rooms they have access to
+                return canAccessRoom(room.id);
+              })
+              .map((room) => (
+                <RoomCard
+                  key={room.id}
+                  room={room}
+                  canAccess={canAccessRoom(room.id)}
+                  userRole={userRole}
+                  isAdmin={isAdmin}
+                  onUpdateStatus={updateRoomStatus}
+                />
+              ))}
           </div>
         )}
 
       </main>
+      
+      {/* Notification Permission Prompt */}
+      <NotificationPermission />
     </div>
   );
 }

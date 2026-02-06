@@ -154,6 +154,20 @@
   .status-ready {
     @apply bg-emerald-500 text-white;
   }
+
+  /* Blinking animation for status indicator */
+  @keyframes blink {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.3;
+    }
+  }
+
+  .status-blink {
+    animation: blink 1.5s ease-in-out infinite;
+  }
 }
 
 /* Touch-friendly buttons for tablets */
