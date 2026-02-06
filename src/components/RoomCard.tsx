@@ -1,13 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Room, RoomStatus } from '@/lib/types';
 import { StatusBadge } from './StatusBadge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { IncubatorDialog } from './IncubatorDialog';
 import { cn } from '@/lib/utils';
-import { CheckCircle, Clock, Loader2, Lock, User, Calendar } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { formatDistanceToNow } from 'date-fns';
+import { Lock } from 'lucide-react';
 
 interface RoomCardProps {
   room: Room;
@@ -15,177 +11,104 @@ interface RoomCardProps {
   onUpdateStatus: (roomId: string, status: RoomStatus, incubator?: string | null) => Promise<{ error: string | null }>;
 }
 
-const incubatorOptions = ['1', '2', '3', '4', '5', 'No Incubator'];
-
 export function RoomCard({ room, canAccess, onUpdateStatus }: RoomCardProps) {
-  const [selectedIncubator, setSelectedIncubator] = useState<string>('No Incubator');
+  const [showIncubatorDialog, setShowIncubatorDialog] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [changedByName, setChangedByName] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (room.last_changed_by) {
-      fetchChangedByName(room.last_changed_by);
-    }
-  }, [room.last_changed_by]);
-
-  const fetchChangedByName = async (userId: string) => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('display_name')
-      .eq('user_id', userId)
-      .single();
-    
-    if (data) {
-      setChangedByName(data.display_name);
-    }
+  const handleStartWorking = () => {
+    setShowIncubatorDialog(true);
   };
 
-  const handleWorkFinished = async () => {
+  const handleConfirmStart = async (incubator: string | null) => {
     setIsUpdating(true);
-    const incubator = selectedIncubator === 'No Incubator' ? null : selectedIncubator;
-    await onUpdateStatus(room.id, 'awaiting_cleaning', incubator);
+    await onUpdateStatus(room.id, 'occupied', incubator);
     setIsUpdating(false);
   };
 
-  const handleRoomReady = async () => {
+  const handleFinishWork = async () => {
+    setIsUpdating(true);
+    await onUpdateStatus(room.id, 'awaiting_cleaning', room.incubator_number);
+    setIsUpdating(false);
+  };
+
+  const handleFinishCleaning = async () => {
     setIsUpdating(true);
     await onUpdateStatus(room.id, 'ready', null);
     setIsUpdating(false);
   };
 
-  const handleSetOccupied = async () => {
-    setIsUpdating(true);
-    await onUpdateStatus(room.id, 'occupied', null);
-    setIsUpdating(false);
-  };
-
   const cardClassName = cn(
-    'room-card transition-all duration-300',
-    room.status === 'occupied' && 'room-card-occupied',
-    room.status === 'awaiting_cleaning' && 'room-card-awaiting',
-    room.status === 'ready' && 'room-card-ready',
-    !canAccess && 'opacity-60'
+    'relative flex flex-col items-center justify-between p-6 rounded-3xl min-h-[200px] transition-all duration-300 cursor-pointer select-none',
+    room.status === 'ready' && 'bg-[#9BE8C0]',
+    room.status === 'awaiting_cleaning' && 'bg-[#F5C95C]',
+    room.status === 'occupied' && 'bg-[#F88B8B]',
+    !canAccess && 'opacity-60 cursor-not-allowed',
+    isUpdating && 'opacity-70 pointer-events-none'
   );
 
-  const getTimeAgo = () => {
-    if (!room.last_status_change) return null;
-    return formatDistanceToNow(new Date(room.last_status_change), { addSuffix: true });
+  const getActionText = () => {
+    if (!canAccess) return null;
+    switch (room.status) {
+      case 'ready':
+        return 'Press to Start';
+      case 'awaiting_cleaning':
+        return 'Press to Finish Cleaning';
+      case 'occupied':
+        return 'Press to Finish Work';
+      default:
+        return null;
+    }
+  };
+
+  const handleCardClick = () => {
+    if (!canAccess || isUpdating) return;
+    
+    switch (room.status) {
+      case 'ready':
+        handleStartWorking();
+        break;
+      case 'awaiting_cleaning':
+        handleFinishCleaning();
+        break;
+      case 'occupied':
+        handleFinishWork();
+        break;
+    }
   };
 
   return (
-    <Card className={cardClassName}>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold">Room {room.room_number}</h2>
-          <StatusBadge status={room.status} animated={room.status === 'occupied'} />
+    <>
+      <div className={cardClassName} onClick={handleCardClick}>
+        {/* Status Badge */}
+        <div className="absolute top-4 left-1/2 -translate-x-1/2">
+          <StatusBadge status={room.status} />
         </div>
-        {room.incubator_number && (
-          <p className="text-sm opacity-80">
-            Incubator: {room.incubator_number}
+
+        {/* Room Number */}
+        <div className="flex-1 flex flex-col items-center justify-center pt-8">
+          <h2 className="text-4xl font-bold text-white mb-2">Room {room.room_number}</h2>
+          <div className="w-24 h-0.5 bg-white/60" />
+        </div>
+
+        {/* Action Text */}
+        {canAccess ? (
+          <p className="text-white/90 text-sm font-medium mt-4">
+            {getActionText()}
           </p>
-        )}
-        
-        {/* Timestamp and user info */}
-        {room.last_status_change && (
-          <div className="mt-2 space-y-1 text-sm opacity-80">
-            <div className="flex items-center gap-1.5">
-              <Calendar className="h-3.5 w-3.5" />
-              <span>{getTimeAgo()}</span>
-            </div>
-            {changedByName && (
-              <div className="flex items-center gap-1.5">
-                <User className="h-3.5 w-3.5" />
-                <span>by {changedByName}</span>
-              </div>
-            )}
-          </div>
-        )}
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {!canAccess ? (
-          <div className="flex items-center gap-2 opacity-80">
-            <Lock className="h-4 w-4" />
-            <span className="text-sm">No access to this room</span>
-          </div>
         ) : (
-          <>
-            {room.status === 'ready' && (
-              <>
-                <Select value={selectedIncubator} onValueChange={setSelectedIncubator}>
-                  <SelectTrigger className="touch-button bg-emerald-900/80 border-2 border-emerald-300 text-emerald-100 font-medium">
-                    <SelectValue placeholder="Select incubator" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {incubatorOptions.map((opt) => (
-                      <SelectItem key={opt} value={opt}>
-                        {opt === 'No Incubator' ? 'No Incubator (Cleaning Only)' : `Incubator ${opt}`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  onClick={handleSetOccupied}
-                  disabled={isUpdating}
-                  className="touch-button w-full bg-emerald-900 text-emerald-100 hover:bg-emerald-800 font-bold shadow-xl border-2 border-emerald-700"
-                >
-                  {isUpdating ? (
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  ) : (
-                    <Clock className="mr-2 h-5 w-5" />
-                  )}
-                  Start Working
-                </Button>
-              </>
-            )}
-
-            {room.status === 'occupied' && (
-              <>
-                <Select value={selectedIncubator} onValueChange={setSelectedIncubator}>
-                  <SelectTrigger className="touch-button bg-red-600 border-2 border-red-300 text-white font-medium">
-                    <SelectValue placeholder="Select incubator" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {incubatorOptions.map((opt) => (
-                      <SelectItem key={opt} value={opt}>
-                        {opt === 'No Incubator' ? 'No Incubator (Cleaning Only)' : `Incubator ${opt}`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  onClick={handleWorkFinished}
-                  disabled={isUpdating}
-                  className="touch-button w-full bg-red-600 text-white hover:bg-red-700 font-bold shadow-lg border-2 border-red-400"
-                  size="lg"
-                >
-                  {isUpdating ? (
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  ) : (
-                    <CheckCircle className="mr-2 h-5 w-5" />
-                  )}
-                  Work Finished
-                </Button>
-              </>
-            )}
-
-            {room.status === 'awaiting_cleaning' && (
-              <Button
-                onClick={handleRoomReady}
-                disabled={isUpdating}
-                className="touch-button w-full bg-amber-600 text-white hover:bg-amber-700 font-bold shadow-lg border-2 border-amber-400"
-                size="lg"
-              >
-                {isUpdating ? (
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                ) : (
-                  <CheckCircle className="mr-2 h-5 w-5" />
-                )}
-                Cleaning Complete
-              </Button>
-            )}
-          </>
+          <div className="flex items-center gap-2 text-white/80 mt-4">
+            <Lock className="h-4 w-4" />
+            <span className="text-sm">No access</span>
+          </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+
+      <IncubatorDialog
+        open={showIncubatorDialog}
+        onOpenChange={setShowIncubatorDialog}
+        onConfirm={handleConfirmStart}
+        roomNumber={room.room_number}
+      />
+    </>
   );
 }
