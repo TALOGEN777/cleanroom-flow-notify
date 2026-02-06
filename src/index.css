@@ -161,22 +161,6 @@
   .touch-button {
     @apply min-h-[56px] min-w-[56px] text-lg font-medium;
   }
-
-  .room-card {
-    @apply rounded-xl !border-[6px] p-6 transition-all duration-300 hover:shadow-xl shadow-md backdrop-blur-sm;
-  }
-
-  .room-card-occupied {
-    @apply border-red-700 bg-red-500 text-white;
-  }
-
-  .room-card-awaiting {
-    @apply border-amber-600 bg-amber-500 text-white;
-  }
-
-  .room-card-ready {
-    @apply border-emerald-700 bg-emerald-500 text-white;
-  }
 }
 
 /* PWA install prompt styles */
