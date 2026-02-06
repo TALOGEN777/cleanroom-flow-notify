@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Room, RoomStatus } from '@/lib/types';
+import { Room, RoomStatus, AppRole } from '@/lib/types';
 import { StatusBadge } from './StatusBadge';
 import { IncubatorDialog } from './IncubatorDialog';
 import { cn } from '@/lib/utils';
@@ -8,14 +8,23 @@ import { Lock } from 'lucide-react';
 interface RoomCardProps {
   room: Room;
   canAccess: boolean;
+  userRole: AppRole | null;
+  isAdmin: boolean;
   onUpdateStatus: (roomId: string, status: RoomStatus, incubator?: string | null) => Promise<{ error: string | null }>;
 }
 
-export function RoomCard({ room, canAccess, onUpdateStatus }: RoomCardProps) {
+export function RoomCard({ room, canAccess, userRole, isAdmin, onUpdateStatus }: RoomCardProps) {
   const [showIncubatorDialog, setShowIncubatorDialog] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
+  // Role-based action permissions
+  // Admin and Operators can "Press to Start" and "Press to Finish Work"
+  const canStartOrFinishWork = isAdmin || userRole === 'operator';
+  // Admin and Operation Team can "Press to Finish Cleaning"
+  const canFinishCleaning = isAdmin || userRole === 'operation_team';
+
   const handleStartWorking = () => {
+    if (!canStartOrFinishWork) return;
     setShowIncubatorDialog(true);
   };
 
@@ -26,23 +35,40 @@ export function RoomCard({ room, canAccess, onUpdateStatus }: RoomCardProps) {
   };
 
   const handleFinishWork = async () => {
+    if (!canStartOrFinishWork) return;
     setIsUpdating(true);
     await onUpdateStatus(room.id, 'awaiting_cleaning', room.incubator_number);
     setIsUpdating(false);
   };
 
   const handleFinishCleaning = async () => {
+    if (!canFinishCleaning) return;
     setIsUpdating(true);
     await onUpdateStatus(room.id, 'ready', null);
     setIsUpdating(false);
   };
 
+  // Determine if user can perform the current action based on room status
+  const canPerformAction = () => {
+    if (!canAccess) return false;
+    switch (room.status) {
+      case 'ready':
+        return canStartOrFinishWork;
+      case 'occupied':
+        return canStartOrFinishWork;
+      case 'awaiting_cleaning':
+        return canFinishCleaning;
+      default:
+        return false;
+    }
+  };
+
   const cardClassName = cn(
-    'relative flex flex-col items-center justify-between p-6 rounded-3xl min-h-[200px] transition-all duration-300 cursor-pointer select-none',
+    'relative flex flex-col items-center justify-between p-6 rounded-3xl min-h-[200px] transition-all duration-300 select-none',
     room.status === 'ready' && 'bg-[#9BE8C0]',
     room.status === 'awaiting_cleaning' && 'bg-[#F5C95C]',
     room.status === 'occupied' && 'bg-[#F88B8B]',
-    !canAccess && 'opacity-60 cursor-not-allowed',
+    canPerformAction() ? 'cursor-pointer' : 'cursor-not-allowed opacity-60',
     isUpdating && 'opacity-70 pointer-events-none'
   );
 
@@ -50,11 +76,11 @@ export function RoomCard({ room, canAccess, onUpdateStatus }: RoomCardProps) {
     if (!canAccess) return null;
     switch (room.status) {
       case 'ready':
-        return 'Press to Start';
+        return canStartOrFinishWork ? 'Press to Start' : null;
       case 'awaiting_cleaning':
-        return 'Press to Finish Cleaning';
+        return canFinishCleaning ? 'Press to Finish Cleaning' : null;
       case 'occupied':
-        return 'Press to Finish Work';
+        return canStartOrFinishWork ? 'Press to Finish Work' : null;
       default:
         return null;
     }
@@ -65,13 +91,13 @@ export function RoomCard({ room, canAccess, onUpdateStatus }: RoomCardProps) {
     
     switch (room.status) {
       case 'ready':
-        handleStartWorking();
+        if (canStartOrFinishWork) handleStartWorking();
         break;
       case 'awaiting_cleaning':
-        handleFinishCleaning();
+        if (canFinishCleaning) handleFinishCleaning();
         break;
       case 'occupied':
-        handleFinishWork();
+        if (canStartOrFinishWork) handleFinishWork();
         break;
     }
   };
@@ -91,9 +117,13 @@ export function RoomCard({ room, canAccess, onUpdateStatus }: RoomCardProps) {
         </div>
 
         {/* Action Text */}
-        {canAccess ? (
+        {canAccess && getActionText() ? (
           <p className="text-white/90 text-sm font-medium mt-4">
             {getActionText()}
+          </p>
+        ) : canAccess ? (
+          <p className="text-white/70 text-sm font-medium mt-4">
+            View only
           </p>
         ) : (
           <div className="flex items-center gap-2 text-white/80 mt-4">

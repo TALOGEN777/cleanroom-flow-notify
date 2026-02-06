@@ -33,7 +33,7 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
     >
       <span 
         className={cn(
-          'mr-2 h-2.5 w-2.5 rounded-full',
+          'mr-2 h-2.5 w-2.5 rounded-full status-blink',
           config.dotColor
         )} 
       />
