@@ -13,60 +13,60 @@ export default function Login() {
   const navigate = useNavigate();
   const { signIn, signUp } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
-  
+
   const [loginUsername, setLoginUsername] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
-  
+
   const [signupUsername, setSignupUsername] = useState('');
   const [signupDisplayName, setSignupDisplayName] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!loginUsername.trim() || !loginPassword) {
       toast.error('Please enter username and password');
       return;
     }
-    
+
     setIsLoading(true);
-    
+
     const { error } = await signIn(loginUsername, loginPassword);
-    
+
     if (error) {
       toast.error(error);
     } else {
       toast.success('Welcome back!');
       navigate('/');
     }
-    
+
     setIsLoading(false);
   };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!signupUsername.trim() || !signupDisplayName.trim() || !signupPassword) {
       toast.error('Please fill in all fields');
       return;
     }
-    
+
     if (signupPassword.length < 6) {
       toast.error('Password must be at least 6 characters');
       return;
     }
-    
+
     setIsLoading(true);
-    
+
     const { error } = await signUp(signupUsername, signupPassword, signupDisplayName);
-    
+
     if (error) {
       toast.error(error);
     } else {
       toast.success('Account created! Welcome!');
       navigate('/');
     }
-    
+
     setIsLoading(false);
   };
 
@@ -74,10 +74,10 @@ export default function Login() {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-2 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-            <Building2 className="h-8 w-8 text-primary" />
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
+            <Building2 className="h-8 w-8 text-gray-500" />
           </div>
-          <CardTitle className="text-2xl font-bold">Cleanroom Ready</CardTitle>
+          <CardTitle className="text-2xl font-bold">Cleanrooms Status</CardTitle>
           <CardDescription>
             Sign in with your username (no email required)
           </CardDescription>
@@ -88,7 +88,7 @@ export default function Login() {
               <TabsTrigger value="login">Sign In</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="login">
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
@@ -120,7 +120,7 @@ export default function Login() {
                 </Button>
               </form>
             </TabsContent>
-            
+
             <TabsContent value="signup">
               <form onSubmit={handleSignup} className="space-y-4">
                 <div className="space-y-2">

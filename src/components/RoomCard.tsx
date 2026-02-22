@@ -25,6 +25,10 @@ export function RoomCard({ room, canAccess, userRole, isAdmin, onUpdateStatus }:
 
   const handleStartWorking = () => {
     if (!canStartOrFinishWork) return;
+    if (room.room_number === '26') {
+      handleConfirmStart(null);
+      return;
+    }
     setShowIncubatorDialog(true);
   };
 
@@ -88,7 +92,7 @@ export function RoomCard({ room, canAccess, userRole, isAdmin, onUpdateStatus }:
 
   const handleCardClick = () => {
     if (!canAccess || isUpdating) return;
-    
+
     switch (room.status) {
       case 'ready':
         if (canStartOrFinishWork) handleStartWorking();
@@ -113,7 +117,12 @@ export function RoomCard({ room, canAccess, userRole, isAdmin, onUpdateStatus }:
         {/* Room Number */}
         <div className="flex-1 flex flex-col items-center justify-center pt-8">
           <h2 className="text-4xl font-bold text-white mb-2">Room {room.room_number}</h2>
-          <div className="w-24 h-0.5 bg-white/60" />
+          <div className="w-24 h-0.5 bg-white/60 mb-2" />
+          {room.status === 'awaiting_cleaning' && room.room_number !== '26' && (
+            <p className="text-gray-700 text-sm font-medium">
+              {room.incubator_number ? `Incubator ${room.incubator_number} to clean` : 'No incubator to clean'}
+            </p>
+          )}
         </div>
 
         {/* Action Text */}

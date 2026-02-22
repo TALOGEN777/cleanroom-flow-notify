@@ -26,26 +26,26 @@ export default function Dashboard() {
       <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-              <Building2 className="h-5 w-5 text-primary" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100">
+              <Building2 className="h-5 w-5 text-gray-500" />
             </div>
             <div>
-              <h1 className="text-lg font-semibold">Cleanroom Ready</h1>
+              <h1 className="text-lg font-semibold">Cleanrooms Status</h1>
               <p className="text-xs text-muted-foreground">
                 {profile?.display_name}
                 {isAdmin && ' (Admin)'}
               </p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" onClick={refetch}>
               <RefreshCw className="h-5 w-5" />
             </Button>
-            
-            <Button 
-              variant="ghost" 
-              size="icon" 
+
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => navigate('/notifications')}
               className="relative"
             >
@@ -56,13 +56,13 @@ export default function Dashboard() {
                 </span>
               )}
             </Button>
-            
+
             {isAdmin && (
               <Button variant="ghost" size="icon" onClick={() => navigate('/admin')}>
                 <Settings className="h-5 w-5" />
               </Button>
             )}
-            
+
             <Button variant="ghost" size="icon" onClick={handleLogout}>
               <LogOut className="h-5 w-5" />
             </Button>
@@ -110,7 +110,7 @@ export default function Dashboard() {
         )}
 
       </main>
-      
+
       {/* Notification Permission Prompt */}
       <NotificationPermission />
     </div>
